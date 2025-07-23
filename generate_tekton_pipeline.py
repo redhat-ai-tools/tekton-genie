@@ -45,6 +45,17 @@ def validate_yaml_syntax(content: str) -> bool:
         if 'apiVersion' not in pipeline_dict:
             cprint("❌ Error: Missing apiVersion", "red")
             return False
+
+        # Check for array-style scripts
+        tasks = pipeline_dict.get('spec', {}).get('pipelineSpec', {}).get('tasks', [])
+        for task in tasks:
+            taskSpec = task.get('taskSpec', {})
+            steps = taskSpec.get('steps', [])
+            for step in steps:
+                if isinstance(step.get('script'), list):
+                    cprint("❌ Error: Script field must be a string, not an array", "red")
+                    cprint(f"   In step '{step.get('name')}' of task '{task.get('name')}'", "red")
+                    return False            
             
         return True
     except yaml.YAMLError as e:
@@ -69,52 +80,79 @@ Current YAML:
 {content}
 
 Rules for fixing Tekton v1 PipelineRun:
-1. Parameter rules:
-   - In spec.params (PipelineRun level): ONLY name and value fields
-     ```yaml
-     spec:
-       params:
-         - name: git-url
-           value: "https://github.com/example/repo"
-     ```
-   - In pipelineSpec.params: Include type field
-     ```yaml
-     pipelineSpec:
-       params:
-         - name: git-url
-           type: string
-     ```
-   - In taskSpec.params: Include type field
-     ```yaml
+1. PipelineRun v1 Required Fields:
+   - spec.pipelineSpec: Contains tasks and their definitions
+   - spec.params: Array of name/value pairs
+   - spec.workspaces: Array of workspace bindings
+
+2. PipelineRun v1 Optional Fields:
+   - spec.timeouts: For setting timeouts
+   - spec.taskRunTemplate: For common task settings
+     including serviceAccountName
+
+3. Common Errors to Fix:
+   - Move serviceAccountName under taskRunTemplate
+   - Use array for params, not map
+   - Use workspaces, not workspaceBindings
+   - Use pipelineSpec, not pipelineDefinition
+   - Remove any v1beta1 inputs/outputs
+   - Remove top-level serviceAccount field
+
+2. Task and Step fields:
+   - runAfter goes at task level, not in taskSpec
+   - steps (not step) for defining task steps
+   - params at task level for passing values
+   - workspaces at task level for binding
+   - script must be a string or heredoc, not an array
+   Example of valid script formats:
+     steps:
+       - name: test
+         script: go test ./...  # Single line
+       - name: build
+         script: |              # Multi-line
+           go build
+           ./run-tests.sh
+
+3. Step-level fields:
+   - securityContext goes inside individual steps
+   - For buildah/privileged containers, use this structure:
+       name: build
+       image: quay.io/buildah/buildah
+       script: |
+         buildah bud --storage-driver=vfs -t $(params.IMAGE) .
+       securityContext:
+         privileged: true
+         runAsUser: 0
+
+4. Parameter rules:
+   - PipelineRun spec.params: ONLY name and value
+     Example:
+     params:
+       - name: git-url
+         value: "https://github.com/example/repo"
+   - PipelineSpec params: MUST have type
+     Example:
+     params:
+       - name: git-url
+         type: string
+   - TaskSpec params: MUST have type
+     Example:
      taskSpec:
        params:
-         - name: url
+         - name: IMAGE
            type: string
-     ```
+           description: optional description
+   - Task params: ONLY name and value for passing
+     Example:
+     params:
+       - name: IMAGE
+         value: $(params.image-url)
 
-2. Security Context rules:
-   - securityContext goes inside individual steps, not at taskSpec level
-   - Example for privileged container:
-     ```yaml
-     steps:
-       - name: build
-         image: quay.io/buildah/buildah
-         securityContext:
-           privileged: true
-           runAsUser: 0
-     ```
-
-3. Required structure:
-   - apiVersion: tekton.dev/v1
-   - kind: PipelineRun
-   - spec must contain pipelineSpec
-   - workspaces must be defined at all levels (PipelineRun, PipelineSpec, Task)
-
-4. Common fixes:
-   - Remove type field from spec.params
-   - Move securityContext from taskSpec to step level
-   - Fix parameter references to use $(params.NAME)
-   - Fix workspace references to use $(workspaces.NAME.path)
+Workspace configuration notes:
+   - Define workspaces at PipelineRun level with emptyDir
+   - Reference them in tasks using the workspace field
+   - Use consistent workspace names across all levels
+   - Ensure proper indentation in the YAML output
 
 Response format: Output ONLY the raw YAML content with no markdown formatting."""
 
@@ -154,12 +192,6 @@ Response format: Output ONLY the raw YAML content with no markdown formatting.""
 def validate_with_binary(content: str, validator_binary: str, temp_file: str = "temp_pipeline.yaml") -> bool:
     """Validate PipelineRun using the external validator binary"""
     try:
-        # Print original content for debugging
-        print("\n📄 Original YAML content:")
-        print("-" * 40)
-        print(content)
-        print("-" * 40)
-        
         # Save content to temporary file
         with open(temp_file, 'w') as f:
             f.write(content)
