@@ -4,7 +4,7 @@ A smart Tekton PipelineRun generator and validator powered by LlamaStack and RAG
 
 ## Overview
 
-Tekton Genie is an AI-powered tool that helps you generate, validate, and manage Tekton PipelineRuns. It uses a combination of vector database storage and large language models to understand Tekton documentation and generate valid pipelinerun configurations.
+Tekton Genie is an AI-powered tool that helps you generate, validate, and manage Tekton PipelineRuns. It uses a combination of vector database storage and large language models to understand Tekton documentation and generate valid pipelinerun configurations and leverages AI agent to validate the generated PipelineRun YAML.
 
 ## Features
 
