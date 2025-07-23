@@ -34,17 +34,17 @@ The main PipelineRun generation tool that:
 - Generates valid Tekton PipelineRun configurations
 - Validates and fixes common errors
 
-#### Validation and Auto-fixing Workflow:
+### 3. Validation and Auto-fixing Workflow:
 
 1. **Initial Generation**: Creates a PipelineRun based on user requirements
-2. **YAML Validation**: 
+2. **YAML Validation**:
    - Performs basic YAML syntax validation
    - Checks for required Tekton fields and structure
    - Optionally uses external Tekton validator for deep validation
 3. **Auto-fixing Process**:
    - If validation fails, analyzes the error messages
    - Automatically generates fixes using context from the knowledge base
-   - Re-validates the fixed PipelineRun
+   - Re-validates the fixed PipelineRun (predefined number of iterations)
    - Presents the fixed version for user approval
 4. **Save and Export**:
    - Saves the validated PipelineRun to a YAML file
@@ -54,7 +54,7 @@ The main PipelineRun generation tool that:
 
 1. **Python Environment**:
    - Python 3.8+
-   - UV package installer: 
+   - UV package installer:
      ```bash
      curl -LsSf https://astral.sh/uv/install.sh | sh
      ```
