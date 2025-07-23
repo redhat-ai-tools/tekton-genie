@@ -130,10 +130,6 @@ uv run --with llama-stack-client ingest_tekton_data.py
 
 ## Flow Diagram
 
-![Tekton Genie Flow](flow.png)
-
-## System Architecture
-
 ```mermaid
 graph TD
     subgraph Ingestion Flow
