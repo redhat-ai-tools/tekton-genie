@@ -38,3 +38,11 @@ go build -o tekton-validate
 ```bash
 ./tekton-validate <path/to/pipeline-or-pipelinerun.yaml>
 ```
+
+## Future enhancements
+
+* Ingest specs provided on the standard input
+* Support for older Spec versions
+* Check existence of referenced tasks
+* Validate TaskRun/Task/ClusterTask
+* Provided with cluster credentials, replace steps with no-ops and execute PipelineRuns
